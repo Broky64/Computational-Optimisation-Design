@@ -3,166 +3,184 @@ import matplotlib.pyplot as plt
 import os
 import sys
 
-# Ajout du dossier src au path si nécessaire
+# Ajout du dossier src au path
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 # --- IMPORTS ---
-# Partie A : Algorithmes & Benchmarks
 from src.algorithms.pso import PSO
 from src.benchmarks.griewank import griewank_function
-
-# Partie B : Aérodynamique
-# Note: evaluate_airfoil EST la fonction demandée en B.1
 from src.aerodynamics.evaluator import evaluate_airfoil 
+from src.aerodynamics.cst import CSTShapeGenerator
 
-# --- CONFIGURATION GLOBALE ---
-# Modifiez ce chemin selon votre installation (c'est celui vu dans vos fichiers précédents)
+# --- CONFIGURATION ---
+# Mettez votre chemin XFOIL exact ici
 XFOIL_PATH = "/Users/paulbrocvielle/Downloads/Xfoil-for-Mac-main/bin/xfoil"
 
+# --- TACHE B.2 : Formulation du problème ---
+def airfoil_objective_function(weights):
+    """
+    Fonction objectif pour l'optimisation du profil.
+    Objectif : Maximiser L/D (donc Minimiser -L/D)
+    Contrainte : CM >= -0.1
+    """
+    # Paramètres imposés
+    REYNOLDS = 500_000
+    ALPHA = 3.0
+    
+    # 1. Évaluation XFOIL
+    # On passe XFOIL_PATH via la variable globale pour simplifier l'appel PSO
+    results = evaluate_airfoil(weights, REYNOLDS, ALPHA, XFOIL_PATH)
+    
+    # 2. Gestion des échecs (Pénalité très forte)
+    if results['CL'] is None:
+        return 1000.0 
+    
+    cl = results['CL']
+    cd = results['CD']
+    cm = results['CM']
+    
+    # Sécurité anti-division par zéro
+    if cd <= 1e-7:
+        return 1000.0
+        
+    # 3. Calcul du score (Fitness)
+    # On veut maximiser L/D, donc on minimise l'opposé.
+    # L/D varie souvent entre 20 et 100. Donc fitness entre -20 et -100.
+    fitness = -(cl / cd)
+    
+    # 4. Application des contraintes (Penalty Method)
+    # Contrainte : Le moment ne doit pas être trop piqueur (CM >= -0.1)
+    if cm < -0.1:
+        # Pénalité = Valeur fixe + proportionnelle à la violation
+        violation = abs(cm - (-0.1))
+        penalty = 500.0 + (violation * 1000.0)
+        fitness += penalty
+        
+    return fitness
+
+# --- TACHES ---
 
 def run_task_a():
-    """
-    Tâche A.3 : Optimisation de la fonction de Griewank (Test de robustesse)
-    """
-    print("\n===========================================================")
-    print("   TASK A: Optimisation Solver Benchmark (Griewank)      ")
-    print("===========================================================")
+    """Tâche A.3 : Optimisation Griewank"""
+    print("\n=== TASK A: PSO on Griewank Function ===")
     
-    # 1. Configuration
-    runs = 10
     dim = 5
     bounds = (-600, 600)
+    pso_params = {'num_particles': 50, 'max_iter': 300, 'w': 0.9, 'c1': 1.4, 'c2': 1.4, 'dim': dim}
+
+    solver = PSO(griewank_function, bounds, **pso_params)
+    best_pos, best_score = solver.optimize()
     
-    # Hyperparamètres PSO (W est géré dynamiquement dans votre classe PSO, mais on passe une valeur init)
-    pso_params = {
-        'num_particles': 100, # Population suffisante pour Griewank
-        'max_iter': 500,
-        'w': 0.9,
-        'c1': 1.4,
-        'c2': 1.4,
-        'dim': dim
-    }
-
-    best_scores = []
-    best_positions = []
-    convergence_histories = []
-
-    # 2. Boucle d'exécution
-    for run in range(runs):
-        print(f"-> Run {run + 1}/{runs}...")
-        
-        # Initialisation
-        pso_solver = PSO(
-            objective_func=griewank_function,
-            bounds=bounds,
-            **pso_params
-        )
-        
-        # Optimisation
-        best_pos, best_score = pso_solver.optimize()
-        
-        # Stockage
-        best_scores.append(best_score)
-        best_positions.append(best_pos)
-        convergence_histories.append(pso_solver.history)
-
-    # 3. Analyse Statistique
-    best_scores_np = np.array(best_scores)
-    mean_score = np.mean(best_scores_np)
-    std_score = np.std(best_scores_np)
+    print(f"\n[RESULT] Best Score: {best_score:.6f}")
     
-    best_idx = np.argmin(best_scores_np)
-    
-    print("\n--- A.3 Results ---")
-    print(f"Mean Score: {mean_score:.6f}")
-    print(f"Std Dev:    {std_score:.6f}")
-    print(f"Best Run ({best_idx+1}): {best_scores_np[best_idx]:.8f}")
-
-    # 4. Visualisation
-    os.makedirs('results', exist_ok=True)
-    plt.figure(figsize=(10, 6))
-    plt.plot(convergence_histories[best_idx], label=f'Best Run', color='blue')
+    # Plot rapide
+    plt.figure()
+    plt.plot(solver.history)
     plt.yscale('log')
-    plt.title('Task A: PSO Convergence on Griewank')
-    plt.xlabel('Iteration')
-    plt.ylabel('Objective Value (log)')
-    plt.grid(True, which="both", alpha=0.5)
-    plt.legend()
-    plt.savefig(os.path.join('results', 'task_a_convergence.png'))
-    print("Graph saved to results/task_a_convergence.png")
-
+    plt.title('Griewank Convergence')
+    plt.savefig('results/task_a_plot.png')
+    print("Graph saved to results/task_a_plot.png")
 
 def run_task_b1():
+    """Tâche B.1 : Test Unitaire Pipeline"""
+    print("\n=== TASK B.1: Pipeline Test ===")
+    test_weights = [-0.15, -0.2, -0.1, 0.2, 0.25, 0.2]
+    res = evaluate_airfoil(test_weights, 500000, 3.0, XFOIL_PATH)
+    
+    if res['CL'] is not None:
+        print(f"[SUCCESS] L/D: {res['CL']/res['CD']:.2f}")
+    else:
+        print("[FAIL] XFOIL Error")
+
+def run_task_b3():
     """
-    Tâche B.1 : Fonction d'automatisation (CST -> XFOIL -> Paramètres).
-    Cette fonction teste le pipeline complet sur un profil arbitraire.
+    Tâche B.3 : Exécution de l'optimisation aérodynamique.
     """
     print("\n===========================================================")
-    print("   TASK B.1: Airfoil Automation Pipeline Test            ")
+    print("   TASK B.3: Airfoil Shape Optimization (PSO)            ")
     print("===========================================================")
-
-    # 1. Définition d'un profil test (Poids CST)
-    # 6 variables : 3 intrados (négatifs), 3 extrados (positifs)
-    # Exemple : Un profil symétrique simple aurait des poids nuls ou symétriques.
-    # Ici on met un profil un peu cambré pour tester.
-    test_weights = [
-        -0.15, -0.20, -0.10,  # Lower surface weights (w_lower 1, 2, 3)
-         0.20,  0.25,  0.20   # Upper surface weights (w_upper 1, 2, 3)
+    
+    # 1. Définition des bornes (6 variables)
+    # Poids Intrados (Lower) : négatifs [-0.6, 0.0]
+    # Poids Extrados (Upper) : positifs [0.0, 0.6]
+    bounds = [
+        (-0.6, 0.0), (-0.6, 0.0), (-0.6, 0.0), # Lower
+        (0.0, 0.6),  (0.0, 0.6),  (0.0, 0.6)   # Upper
     ]
     
-    reynolds = 500_000
-    alpha = 3.0 # Angle d'attaque imposé par le devoir (B.3)
-
-    print(f"Testing inputs:")
-    print(f" - Weights: {test_weights}")
-    print(f" - Reynolds: {reynolds}")
-    print(f" - Alpha: {alpha}°")
-    print(f" - XFOIL Path: {XFOIL_PATH}")
-
-    # 2. Appel de la fonction d'automatisation (B.1 logic is inside evaluate_airfoil)
-    print("\nRunning XFOIL automation...")
+    # 2. Configuration PSO
+    # NOTE : XFOIL est lent. On réduit la population et les itérations par rapport à Griewank.
+    # 20 particules * 30 itérations = 600 appels XFOIL (environ 10-15 minutes selon PC)
+    pso_params = {
+        'num_particles': 20, 
+        'max_iter': 3,
+        'w': 0.9,    # Inertie adaptative gérée dans pso.py
+        'c1': 1.4,
+        'c2': 1.4
+    }
     
-    try:
-        results = evaluate_airfoil(
-            weights=test_weights,
-            reynolds=reynolds,
-            alpha=alpha,
-            xfoil_path=XFOIL_PATH
-        )
+    print(f"Configuration: {pso_params['num_particles']} particles, {pso_params['max_iter']} iterations.")
+    print("Starting optimization (this may take time)...")
+    
+    # 3. Lancement
+    solver = PSO(
+        objective_func=airfoil_objective_function,
+        bounds=bounds,
+        **pso_params
+    )
+    
+    best_weights, best_score = solver.optimize()
+    
+    # 4. Résultats
+    print("\n=== OPTIMIZATION FINISHED ===")
+    print(f"Best Objective Score: {best_score:.4f}")
+    print(f"Best Weights: {np.round(best_weights, 4)}")
+    
+    # Ré-évaluation finale pour affichage propre
+    final_res = evaluate_airfoil(best_weights, 500000, 3.0, XFOIL_PATH)
+    if final_res['CL']:
+        ld = final_res['CL'] / final_res['CD']
+        print(f"Final L/D Ratio: {ld:.2f}")
+        print(f"Moment Coeff:    {final_res['CM']:.4f}")
         
-        # 3. Affichage des résultats extraits
-        if results['CL'] is not None:
-            print("\n[SUCCESS] XFOIL Results Extracted:")
-            print(f"  CL (Lift)   : {results['CL']:.4f}")
-            print(f"  CD (Drag)   : {results['CD']:.5f}")
-            print(f"  CM (Moment) : {results['CM']:.4f}")
-            print(f"  L/D Ratio   : {(results['CL']/results['CD']):.2f}")
-        else:
-            print("\n[FAILURE] XFOIL failed to converge or geometry was invalid.")
-            print("Check if XFOIL path is correct and if geometry is not self-intersecting.")
-            
-    except Exception as e:
-        print(f"\n[ERROR] An exception occurred: {e}")
-        print("Make sure XFOIL is installed and the path is correct.")
-
+        # Sauvegarde du profil
+        cst = CSTShapeGenerator()
+        coords = cst.generate_airfoil(best_weights[:3], best_weights[3:], n_points=150)
+        
+        fname = "results/optimized_airfoil.dat"
+        os.makedirs('results', exist_ok=True)
+        with open(fname, 'w') as f:
+            f.write(f"Optimized Airfoil L/D={ld:.2f}\n")
+            for x, y in coords:
+                f.write(f" {x:.6f}  {y:.6f}\n")
+        print(f"Geometry saved to {fname}")
+        
+        # Plot Convergence
+        plt.figure()
+        plt.plot(solver.history)
+        plt.xlabel('Iteration')
+        plt.ylabel('Negative L/D')
+        plt.title('Airfoil Optimization Convergence')
+        plt.grid(True)
+        plt.savefig('results/task_b3_convergence.png')
+        print("Convergence plot saved.")
+        
+    else:
+        print("Error: Could not validate the best solution.")
 
 def main():
     while True:
         print("\n--- MAIN MENU ---")
-        print("1. Run Task A (Griewank Optimization)")
-        print("2. Run Task B.1 (Airfoil Automation Test)")
+        print("1. Run Task A (Griewank)")
+        print("2. Run Task B.1 (Test Pipeline)")
+        print("3. Run Task B.3 (Full Optimization)")
         print("0. Exit")
         
-        choice = input("Select an option: ")
-        
-        if choice == '1':
-            run_task_a()
-        elif choice == '2':
-            run_task_b1()
-        elif choice == '0':
-            break
-        else:
-            print("Invalid option.")
+        c = input("Choice: ")
+        if c == '1': run_task_a()
+        elif c == '2': run_task_b1()
+        elif c == '3': run_task_b3()
+        elif c == '0': break
 
 if __name__ == "__main__":
     main()
