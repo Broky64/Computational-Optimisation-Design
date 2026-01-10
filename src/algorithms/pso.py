@@ -25,7 +25,7 @@ class PSO:
         max_iter : int
             Maximum number of iterations.
         w : float
-            Inertia weight.
+            Initial inertia weight (will be overridden by adaptive logic).
         c1 : float
             Cognitive coefficient (personal learning).
         c2 : float
@@ -63,12 +63,24 @@ class PSO:
         # 1. First, I'll initialize the swarm
         self._initialize_swarm()
         
+        # --- MODIFICATION: Velocity Clamping ---
+        # Limit velocity to 20% of the total search range to prevent explosion
+        range_width = self.upper_bound - self.lower_bound
+        v_max = 0.2 * range_width
+        
+        # --- MODIFICATION: Adaptive Inertia settings ---
+        w_max = 0.9  # High exploration at start
+        w_min = 0.4  # High exploitation at end
+        
         # 2. This is the main optimization loop
         for i in range(self.max_iter):
+            
+            # Update Inertia Weight linearly
+            current_w = w_max - i * ((w_max - w_min) / self.max_iter)
+            
             for particle in self.particles:
                 
                 # --- UPDATE VELOCITY ---
-                # I'm using r1 and r2 as random vectors between 0 and 1
                 r1 = np.random.rand(self.dim)
                 r2 = np.random.rand(self.dim)
                 
@@ -76,7 +88,12 @@ class PSO:
                 cognitive = self.c1 * r1 * (particle.best_position - particle.position)
                 social = self.c2 * r2 * (self.global_best_position - particle.position)
                 
-                particle.velocity = (self.w * particle.velocity) + cognitive + social
+                # Use adaptive 'current_w' instead of fixed 'self.w'
+                particle.velocity = (current_w * particle.velocity) + cognitive + social
+                
+                # --- APPLY VELOCITY CLAMPING ---
+                # Clip velocity between -v_max and v_max
+                particle.velocity = np.clip(particle.velocity, -v_max, v_max)
                 
                 # --- UPDATE POSITION ---
                 particle.position = particle.position + particle.velocity
@@ -100,12 +117,14 @@ class PSO:
             
             # Logging the history for each iteration
             self.history.append(self.global_best_score)
-            print(f"Iter {i+1}/{self.max_iter} | Best Score: {self.global_best_score:.6f}")
+            # print(f"Iter {i+1}/{self.max_iter} | Best Score: {self.global_best_score:.6f}")
 
         return self.global_best_position, self.global_best_score
 
     def _initialize_swarm(self):
         self.particles = []
+        self.global_best_score = float('inf') # Reset global best for new run
+        
         for _ in range(self.n_particles):
             p = Particle(self.dim, self.lower_bound, self.upper_bound)
             
@@ -118,3 +137,47 @@ class PSO:
                 self.global_best_position = copy.deepcopy(p.position)
             
             self.particles.append(p)
+
+if __name__ == "__main__":
+    import sys
+    import os
+    
+    # Add project root to python path to allow imports of other modules
+    # Current file is in src/algorithms/pso.py, so we go up 3 levels to get project root?
+    # No, usually src is at root or 'Computational Optimisation Design' is root.
+    # User's main.py is in 'Computational Optimisation Design'.
+    # src is in 'Computational Optimisation Design/src'.
+    # So we need to add 'Computational Optimisation Design' to path.
+    # relative path from pso.py: ../..
+    
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    sys.path.append(project_root)
+    
+    try:
+        from src.benchmarks.griewank import griewank_function
+        func_name = "Griewank"
+        func = griewank_function
+        bounds = (-600, 600)
+    except ImportError:
+        print("Could not import Griewank function, using Sphere function instead.")
+        def sphere_function(x):
+            return np.sum(np.array(x)**2)
+        func_name = "Sphere"
+        func = sphere_function
+        bounds = (-10, 10)
+
+    print(f"Running PSO directly on {func_name} function...")
+    
+    pso = PSO(
+        objective_func=func,
+        bounds=bounds,
+        num_particles=50,
+        max_iter=100,
+        dim=5
+    )
+    
+    best_pos, best_score = pso.optimize()
+    
+    print("\nOptimization Results:")
+    print(f"  Best Score: {best_score}")
+    print(f"  Best Position: {best_pos}")
