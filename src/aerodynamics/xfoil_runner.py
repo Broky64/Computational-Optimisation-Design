@@ -46,7 +46,7 @@ class XFoilRunner:
         Returns
         -------
         dict
-            Dictionary containing 'CL' and 'CD'. Returns None for values if analysis fails.
+            Dictionary containing 'CL', 'CD', and 'CM'. Returns None for values if analysis fails.
         """
         # I'm creating temporary files here. I need to be careful with the working directory 
         # because XFOIL tends to write files to the CWD. Also, XFOIL can be finicky 
@@ -97,15 +97,15 @@ class XFoilRunner:
                     print(f"XFOIL warning/error: {result.stderr}")
 
                 # Parse results
-                cl, cd = self._parse_results(temp_path / results_file, alpha)
-                return {'CL': cl, 'CD': cd}
+                cl, cd, cm = self._parse_results(temp_path / results_file, alpha)
+                return {'CL': cl, 'CD': cd, 'CM': cm}
 
             except subprocess.TimeoutExpired:
                 print("XFOIL analysis timed out.")
-                return {'CL': None, 'CD': None}
+                return {'CL': None, 'CD': None, 'CM': None}
             except Exception as e:
                 print(f"XFOIL execution error: {e}")
-                return {'CL': None, 'CD': None}
+                return {'CL': None, 'CD': None, 'CM': None}
 
     def _write_coordinates(self, coordinates: np.ndarray, filepath: Path):
         """Write coordinates to an XFOIL-compatible text file."""
@@ -143,11 +143,12 @@ class XFoilRunner:
                         if abs(alpha - target_alpha) < 0.01:
                             cl = float(parts[1])
                             cd = float(parts[2])
-                            return cl, cd
+                            cm = float(parts[4])
+                            return cl, cd, cm
                     except (ValueError, IndexError):
                         continue
                         
-            return None, None
+            return None, None, None
             
         except Exception:
-            return None, None
+            return None, None, None

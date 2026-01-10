@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.aerodynamics.cst import CSTShapeGenerator
 from src.aerodynamics.xfoil_runner import XFoilRunner
+from src.aerodynamics.evaluator import evaluate_airfoil
 
 def test_xfoil_integration():
     print("=== XFOIL INTEGRATION TEST (PART B) ===")
@@ -41,5 +42,32 @@ def test_xfoil_integration():
         print("\n[ERROR] XFOIL didn't return any data.")
         print("I should check if the binary path is correct and if XQuartz is open.")
 
+def test_evaluator():
+    print("\n=== EVALUATOR FUNCTION TEST ===")
+    
+    # Path to my compiled XFOIL binary
+    XFOIL_EXE = "/Users/paulbrocvielle/Downloads/Xfoil-for-Mac-main/bin/xfoil"
+    
+    # Weights for the test: 3 lower (negative), 3 upper (positive)
+    weights = [-0.1, -0.1, -0.1, 0.1, 0.1, 0.1]
+    
+    print(f"Testing weights: {weights}")
+    
+    results = evaluate_airfoil(
+        weights=weights,
+        reynolds=500000,
+        alpha=3.0,
+        xfoil_path=XFOIL_EXE
+    )
+    
+    if results['CL'] is not None:
+        print("\n[OK] Evaluator returned results:")
+        print(f"  CL: {results['CL']}")
+        print(f"  CD: {results['CD']}")
+        print(f"  CM: {results['CM']}")
+    else:
+        print("\n[FAIL] Evaluator returned None (Constraint violation or XFOIL error).")
+
 if __name__ == "__main__":
     test_xfoil_integration()
+    test_evaluator()
