@@ -53,7 +53,7 @@ def run_task_a():
     dim = 5
     bounds = (-600, 600)
     runs = 10
-    params = {'num_particles': 50, 'max_iter': 300, 'w': 0.9, 'c1': 1.4, 'c2': 1.4, 'dim': dim, 'n_jobs': -1}
+    params = {'num_particles': 100, 'max_iter': 300, 'w': 0.9, 'c1': 1.4, 'c2': 1.4, 'dim': dim, 'n_jobs': -1}
 
     best_scores = []
     histories = []
