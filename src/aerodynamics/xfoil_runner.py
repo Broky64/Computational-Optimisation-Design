@@ -48,9 +48,8 @@ class XFoilRunner:
         dict
             Dictionary containing 'CL', 'CD', and 'CM'. Returns None for values if analysis fails.
         """
-        # I'm creating temporary files here. I need to be careful with the working directory 
-        # because XFOIL tends to write files to the CWD. Also, XFOIL can be finicky 
-        # with long paths or spaces, so I'll run it directly inside the temp folder.
+        # Temporary files are managed within a dedicated directory to prevent XFOIL from cluttering the working directory. 
+        # Execution within the temporary directory avoids issues with long paths or spaces.
         
         original_cwd = os.getcwd()
         
@@ -58,13 +57,13 @@ class XFoilRunner:
             temp_path = Path(temp_dir)
             
             airfoil_file = temp_path / "airfoil.dat"
-            results_file = "results.pol" # Relative path for XFOIL command
+            results_file = "results.pol" # Relative path used for XFOIL output commands.
             
             # Write coordinates used for analysis
             self._write_coordinates(coordinates, airfoil_file)
             
-            # I'm setting up the XFOIL input commands. 
-            # I run everything inside the temp directory to avoid any path issues.
+            # XFOIL command sequence configuration. 
+            # All operations performed within the temporary directory to ensure path consistency.
             commands = [
                 f"LOAD {airfoil_file.name}",
                 "OPER",
@@ -72,9 +71,9 @@ class XFoilRunner:
                 f"ITER {iter_limit}",
                 "PACC",
                 f"{results_file}",  # Output polar file
-                "",                 # Dump file (empty -> no dump)
+                "",                 # Dump file parameter (left empty to disable)
                 f"ALFA {alpha}",
-                "PACC",             # Turn off accumulation
+                "PACC",             # Disable polar accumulation (PACC)
                 "QUIT"
             ]
             
@@ -92,8 +91,7 @@ class XFoilRunner:
                 )
                 
                 if result.returncode != 0:
-                    # XFOIL often returns non-zero codes even if it doesn't crash explicitly,
-                    # so I'll just print the warning for now.
+                    # XFOIL may return a non-zero exit code for convergence warnings or minor errors.
                     print(f"XFOIL warning/error: {result.stderr}")
 
                 # Parse results
@@ -125,8 +123,8 @@ class XFoilRunner:
             with open(result_path, 'r') as f:
                 lines = f.readlines()
             
-            # XFOIL Polar file format typically starts with header lines
-            # Data usually starts after the line starting with "------"
+            # Standard XFOIL polar format includes header lines followed by a dashed separator.
+            # Data entries follow the separator line.
             # Format:  alpha    CL        CD       CDp       CM     Top_Xcp  Bot_Xcp
             
             data_start = False
@@ -139,7 +137,7 @@ class XFoilRunner:
                     parts = line.split()
                     try:
                         alpha = float(parts[0])
-                        # Checking if this row matches my target alpha (approximate match)
+                        # Validate row against the target angle of attack using a small tolerance.
                         if abs(alpha - target_alpha) < 0.01:
                             cl = float(parts[1])
                             cd = float(parts[2])

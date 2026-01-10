@@ -74,25 +74,18 @@ class CSTShapeGenerator:
         y_lower = self._calculate_surface(w_lower, x)
         
         # Upper surface: Trailing Edge (1.0) to Leading Edge (0.0)
-        # x array goes 0->1. We want 1->0 for upper in the final list?
-        # Standard XFOIL: Top surface from TE to LE, then Bottom surface from LE to TE.
+        # Standard XFOIL format: Top surface from TE to LE, then Bottom surface from LE to TE.
         
         # Prepare Upper Segment: (1.0 -> 0.0)
-        # Currently x is 0 -> 1. So y_upper corresponds to x 0->1.
-        # We need to reverse both for the "Top" segment of the file.
         x_top = np.flip(x)
         y_top = np.flip(y_upper)
         
         # Prepare Lower Segment: (0.0 -> 1.0)
-        # We skip the first point (0,0) to avoid duplication with x_top's last point
+        # Skip the first point (0,0) to avoid duplication with the last point of the upper segment
         x_bot = x[1:]
         y_bot = y_lower[1:]
         
-        # For the lower surface, y is typically negative if I provide negative weights.
-        # I'm assuming the weights I pass already account for the sign.
-        # Finally, I'll combine the top and bottom coordinates into one array for XFOIL.
-        
-        # Combine
+        # Combine upper and lower segments for XFOIL compatibility
         coords_x = np.concatenate([x_top, x_bot])
         coords_y = np.concatenate([y_top, y_bot])
         

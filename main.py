@@ -5,32 +5,32 @@ import numpy as np
 import os
 import sys
 
-# Configuration du Path
+# Path configuration
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-# --- IMPORTS ---
+# Imports
 from src.algorithms.pso import PSO
 from src.benchmarks.griewank import griewank_function
 from src.aerodynamics.evaluator import evaluate_airfoil 
 from src.aerodynamics.cst import CSTShapeGenerator
 
-# Imports modularisés
+# Modular imports
 from src.analysis.robustness import run_robustness_analysis
 from src.analysis.surrogate import generate_training_data
 from src.analysis.model_training import train_surrogate_model
 from src.analysis.surrogate_optimization import run_surrogate_optimization
 
-# --- CONFIGURATION ---
+# Configuration
 XFOIL_PATH = "/Users/paulbrocvielle/Downloads/Xfoil-for-Mac-main/bin/xfoil"
 
-# --- HELPERS ---
+# Helper functions
 def save_report(filename, content):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'w') as f: f.write(content)
     print(f"\n[REPORT SAVED] -> {filename}")
 
 def airfoil_objective_function(weights):
-    """Fonction objectif pour l'optimisation (B.3)"""
+    """Objective function for airfoil optimization (Task B.3)"""
     res = evaluate_airfoil(weights, 500_000, 3.0, XFOIL_PATH)
     
     if res['CL'] is None or res['CD'] is None or res['CD'] < 0.001: return 1000.0
@@ -43,7 +43,7 @@ def airfoil_objective_function(weights):
         fitness += 500.0 + (abs(res['CM'] - (-0.1)) * 1000.0)
     return fitness
 
-# --- TACHES ---
+# Task implementations
 
 def run_task_a():
     print("\n=== TASK A: PSO Benchmark (Griewank) ===")
@@ -151,7 +151,7 @@ def run_task_b3():
     final = evaluate_airfoil(best_w, 500_000, 3.0, XFOIL_PATH)
     ld = final['CL']/final['CD'] if final['CL'] else 0
     
-    # Sauvegarde Geometrie
+    # Save airfoil geometry
     cst = CSTShapeGenerator()
     coords = cst.generate_airfoil(best_w[:3], best_w[3:], 150)
     with open("results/optimized_airfoil_B3.dat", 'w') as f:
@@ -184,26 +184,26 @@ BEST GEOMETRY ANALYSIS:
 """
     save_report("results/task_b3_results.txt", report)
     
-    # --- PLOT AMÉLIORÉ (Toutes les runs + Zoom intelligent) ---
+    # Comprehensive plot of all runs with intelligent scaling
     plt.figure(figsize=(10, 6))
     
-    # 1. On trace toutes les runs en gris (contexte)
+    # Plot all optimization runs in light gray for context
     for i, h in enumerate(all_histories):
         if i != best_idx:
             plt.plot(h, color='gray', alpha=0.3, linewidth=1, label='_nolegend_')
     
-    # 2. On trace le meilleur run en bleu (focus)
+    # Plot the best optimization run in blue for focus
     best_history = all_histories[best_idx]
     plt.plot(best_history, color='blue', linewidth=2, label=f'Best Run ({best_idx+1})')
     
-    # 3. Adaptation de l'échelle Y pour éviter l'écrasement par les +1000 (erreurs)
-    # On regarde les valeurs du meilleur run. Si elles sont < 0, on limite le max à 0 ou 50.
-    valid_vals = [v for v in best_history if v < 500] # On filtre les pénalités énormes pour le calcul des bornes
+    # Adjust Y-axis scale to ignore high penalty values from failed calculations
+    # Limit the maximum Y-value to 50 if the best run has negative values
+    valid_vals = [v for v in best_history if v < 500]  # Filter extreme penalties for axis calculation
     if valid_vals:
-        # On laisse un peu de marge autour du meilleur run
+        # Provide margin around the best run results
         y_min = min(valid_vals) - 10
         y_max = max(valid_vals) + 10
-        # Mais on s'assure de ne pas dépasser 50 pour masquer les runs à +1000
+        # Ensure Y-axis maximum does not exceed 50 to omit high-penalty runs
         y_max = min(y_max, 50) 
         plt.ylim(y_min, y_max)
     
@@ -245,10 +245,10 @@ RESULTS:
     plt.legend(); plt.grid(True); plt.title('Swarm Size Impact')
     plt.savefig('results/sensitivity_analysis_B4.png'); plt.close()
 
-# --- APPELS AUX MODULES ---
+# Module execution wrappers
 
 def launch_c1():
-    # --- COLLEZ VOS POIDS OPTIMAUX ICI ---
+    # Predefined optimal weights for robustness analysis
     best_weights = [0.000000, 0.000000, 0.000000, 0.145422, 0.150759, 0.293384]
     run_robustness_analysis(best_weights, XFOIL_PATH, n_samples=100)
 

@@ -43,12 +43,9 @@ class PSO:
         self.history = []
 
     def optimize(self):
-        # 1. Initialization
-        # We need to initialize swarm first.
-        # Note: Initialization also requires evaluation.
+        # Initialization sequence: Instantiate swarm and evaluate initial positions.
         
-        # To avoid code duplication, we'll handle the pool creation here
-        # and pass it to a helper or handle logic inside.
+        # Manage pool creation and pass to optimization loop.
         
         if self.n_jobs > 1:
             print(f"Starting Parallel Optimization on {self.n_jobs} cores...")
@@ -65,13 +62,13 @@ class PSO:
         Internal loop to handle both sequential and parallel execution
         without duplicating logic.
         """
-        # --- INITIALIZATION ---
+        # Initialization
         self.particles = [Particle(self.dim, self.lower_bound, self.upper_bound) for _ in range(self.n_particles)]
         self.global_best_score = float('inf')
         
         positions = [p.position for p in self.particles]
         
-        # First Evaluation
+        # Initial assessment of swarm performance
         if pool:
             scores = pool.map(self.func, positions)
         else:
@@ -85,7 +82,7 @@ class PSO:
                 self.global_best_score = score
                 self.global_best_position = copy.deepcopy(p.position)
         
-        # --- MAIN LOOP ---
+        # Main optimization loop
         range_width = self.upper_bound - self.lower_bound
         v_max = 0.2 * range_width
         w_max = 0.9
@@ -96,7 +93,7 @@ class PSO:
             
             positions_to_evaluate = []
             
-            # 1. Update Velocities & Positions
+            # Update velocity and position for each particle
             for particle in self.particles:
                 r1 = np.random.rand(self.dim)
                 r2 = np.random.rand(self.dim)
@@ -111,13 +108,13 @@ class PSO:
                 
                 positions_to_evaluate.append(particle.position)
 
-            # 2. Evaluate (Parallel or Sequential)
+            # Evaluate particles (parallel or sequential)
             if pool:
                 scores = pool.map(self.func, positions_to_evaluate)
             else:
                 scores = [self.func(pos) for pos in positions_to_evaluate]
 
-            # 3. Update Bests
+            # Update personal and global best records
             for idx, particle in enumerate(self.particles):
                 score = scores[idx]
                 particle.current_score = score

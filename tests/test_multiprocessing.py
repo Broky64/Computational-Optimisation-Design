@@ -3,7 +3,7 @@ import multiprocessing
 import os
 import sys
 
-# Get absolute path to project root
+# Determine the absolute path to the project root directory.
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root)
 
@@ -11,17 +11,16 @@ from src.algorithms.pso import PSO
 
 def expensive_function(x):
     """
-    A dummy function that takes some time to compute
-    to make parallelization visible/necessary.
+    Simulated computationally intensive function to evaluate parallelization performance.
     """
-    # Simulate heavy computation
+    # Simulate high computational load.
     _ = [i**2 for i in range(100000)]
     return sum(x**2)
 
 if __name__ == "__main__":
     print(f"CPU count: {multiprocessing.cpu_count()}")
     
-    # 1. Sequential Run
+    # Sequential performance evaluation.
     print("\n--- Sequential Run (n_jobs=1) ---")
     start_time = time.time()
     pso_seq = PSO(
@@ -36,7 +35,7 @@ if __name__ == "__main__":
     seq_duration = time.time() - start_time
     print(f"Sequential Duration: {seq_duration:.4f} seconds")
 
-    # 2. Parallel Run
+    # Parallel performance evaluation.
     print("\n--- Parallel Run (n_jobs=-1) ---")
     start_time = time.time()
     pso_par = PSO(

@@ -8,13 +8,12 @@ from src.aerodynamics.evaluator import evaluate_airfoil
 
 def run_surrogate_optimization(xfoil_path):
     """
-    Tâche C.4 : Optimisation utilisant le Surrogate Model (IA) au lieu de XFOIL.
-    Objectif : Montrer l'accélération drastique du temps de calcul.
+    Task C.4: Optimization using a surrogate model to demonstrate significant computational speedup compared to XFOIL.
     """
     model_path = "results/surrogate_model.pkl"
     print(f"\n[ANALYSIS] Starting Optimization using Surrogate Model...")
     
-    # 1. Chargement du modèle
+    # Load surrogate model
     if not os.path.exists(model_path):
         print(f"[ERROR] Model not found at {model_path}. Run Option 7 first!")
         return
@@ -22,21 +21,21 @@ def run_surrogate_optimization(xfoil_path):
     model = joblib.load(model_path)
     print("  Model loaded successfully.")
     
-    # 2. Définition de la fonction objectif "Virtuelle" (Ultra rapide)
+    # Objective function definition using the surrogate model for rapid evaluation.
     def surrogate_objective(weights):
-        # Le modèle attend un DataFrame avec des noms de colonnes précis
-        # weights est une liste [w1, w2, w3, w4, w5, w6]
+        # Format input weights as a DataFrame for model prediction.
+        # Weights vector: [w1, w2, w3, w4, w5, w6]
         X = np.array(weights).reshape(1, -1)
         X_df = pd.DataFrame(X, columns=['w1','w2','w3','w4','w5','w6'])
         
-        # Prédiction instantanée
+        # Surrogate model prediction
         predicted_ld = model.predict(X_df)[0]
         
-        # On maximise L/D => on minimise l'opposé
+        # Convert L/D maximization to minimization.
         return -predicted_ld
 
-    # 3. Configuration du PSO
-    # On peut se permettre beaucoup d'itérations car c'est gratuit en temps de calcul
+    # PSO configuration
+    # High iteration count is feasible due to the speed of the surrogate model.
     dim = 6
     bounds = [(-0.6, 0.0)]*3 + [(0.0, 0.6)]*3
     
@@ -45,12 +44,12 @@ def run_surrogate_optimization(xfoil_path):
         'max_iter': 100,      
         'w': 0.7, 'c1': 1.4, 'c2': 1.4,
         'dim': dim,
-        'n_jobs': 1 # Pas de parallélisme nécessaire, le modèle est trop rapide
+        'n_jobs': 1 # Sequential execution is sufficient given the rapid evaluation time.
     }
     
     print("  Launching PSO on Surrogate Model (50 particles, 100 iter)...")
     
-    # 4. Exécution et Chronométrage
+    # Optimization execution and timing
     start_time = time.time()
     
     solver = PSO(surrogate_objective, bounds, **pso_params)
@@ -59,7 +58,7 @@ def run_surrogate_optimization(xfoil_path):
     elapsed = time.time() - start_time
     print(f"  Optimization finished in {elapsed:.4f} seconds!")
     
-    # 5. Vérification avec la "Vérité Terrain" (XFOIL)
+    # Validation against XFOIL ground truth
     print("\n[VERIFICATION] Validating result with real XFOIL...")
     real_res = evaluate_airfoil(best_weights, 500_000, 3.0, xfoil_path)
     
@@ -70,7 +69,7 @@ def run_surrogate_optimization(xfoil_path):
     predicted_ld = -best_score_pred
     error = abs(predicted_ld - real_ld)
     
-    # 6. Rapport
+    # Report generation
     report = f"""===========================================================
 TASK C.4 REPORT: Surrogate-Based Optimization
 ===========================================================

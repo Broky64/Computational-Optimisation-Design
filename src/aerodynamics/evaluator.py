@@ -3,7 +3,7 @@ import numpy as np
 import sys
 import os
 
-# Ensure we can import modules if running directly, though usually this is handled by package structure
+# Ensure system path includes project root for module imports.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from src.aerodynamics.cst import CSTShapeGenerator
@@ -31,15 +31,15 @@ def evaluate_airfoil(weights, reynolds, alpha, xfoil_path):
     """
     
     # 1. Parse weights
-    # Assuming standard order: first 3 are lower, last 3 are upper
+    # Weights partitioned into lower (first 3) and upper (last 3) surfaces.
     w_lower = weights[:3]
     w_upper = weights[3:]
     
     cst = CSTShapeGenerator()
     
     # 2. Geometric Constraint Check (Thickness)
-    # I'll check that the upper surface is strictly above (or equal to) the lower surface.
-    # accessing the internal method for a precise grid check.
+    # Verify that the upper surface is consistently above or equal to the lower surface.
+    # Access internal surface calculation for thickness verification.
     n_points = 100
     beta = np.linspace(0, np.pi, n_points)
     x = (1 - np.cos(beta)) / 2
@@ -47,7 +47,7 @@ def evaluate_airfoil(weights, reynolds, alpha, xfoil_path):
     y_upper = cst._calculate_surface(w_upper, x)
     y_lower = cst._calculate_surface(w_lower, x)
     
-    # If the lower surface is above the upper surface at any point, it's invalid.
+    # Invalid geometry if lower surface exceeds upper surface.
     if np.any(y_lower > y_upper):
         return {'CL': None, 'CD': None, 'CM': None}
         

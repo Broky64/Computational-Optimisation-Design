@@ -4,14 +4,14 @@ from src.aerodynamics.evaluator import evaluate_airfoil
 
 def generate_training_data(xfoil_path, n_samples=200):
     """
-    Tâche C.3 : Génère un dataset CSV de profils aléatoires pour l'entrainement IA.
+    Task C.3: Generate a dataset of random airfoils for surrogate model training.
     """
     print(f"\n[ANALYSIS] Generating Surrogate Training Data ({n_samples} samples)...")
     
     csv_file = "results/surrogate_dataset.csv"
     os.makedirs('results', exist_ok=True)
     
-    # Bornes (Intrados négatif, Extrados positif)
+    # Coordinate bounds: Negative for lower surface, positive for upper surface.
     lower_bounds = np.array([-0.6, -0.6, -0.6, 0.0, 0.0, 0.0])
     upper_bounds = np.array([ 0.0,  0.0,  0.0, 0.6, 0.6, 0.6])
     
@@ -26,19 +26,19 @@ def generate_training_data(xfoil_path, n_samples=200):
         while valid_count < n_samples:
             total_attempts += 1
             
-            # Sampling aléatoire
+            # Random weight sampling
             weights = np.random.uniform(lower_bounds, upper_bounds)
             
-            # Calcul XFOIL
+            # Aerodynamic performance calculation (XFOIL)
             res = evaluate_airfoil(weights, 500_000, 3.0, xfoil_path)
             
-            # Validation stricte
+            # Strict result validation
             if (res['CL'] is not None and 
                 res['CD'] is not None and 
                 res['CD'] > 1e-6 and 
                 res['CD'] < 1.0):
                 
-                # Ecriture CSV
+                # CSV output formatting
                 w_str = ",".join([f"{w:.6f}" for w in weights])
                 line = f"{w_str},{res['CL']:.6f},{res['CD']:.8f},{res['CM']:.6f}\n"
                 f.write(line)

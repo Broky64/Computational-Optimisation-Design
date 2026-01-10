@@ -23,22 +23,22 @@ def griewank_function(x):
     sum_term = np.sum(x**2) / 4000
     
     # Term 2: Product component
-    # Warning: Indices in math start at 1, but in Python at 0.
-    # We need to create an index array [1, 2, ..., n]
+    # Mathematical indices begin at 1; adjust for Python's 0-based indexing.
+    # Generate an index array starting from 1 for the product term.
     indices = np.arange(1, len(x) + 1)
     prod_term = np.prod(np.cos(x / np.sqrt(indices)))
     
-    # Final Formula
+    # Griewank function calculation.
     result = sum_term - prod_term + 1
     
     return result
 
-# Just a quick test if I run this script directly
+# Script execution test block.
 if __name__ == "__main__":
-    # Testing the optimal point (it should return 0.0)
+    # Validation at global minimum (expected value: 0.0).
     x_opt = [0, 0, 0, 0, 0]
     print(f"Test at origin {x_opt}: f(x) = {griewank_function(x_opt)}")
     
-    # Testing with a random point
+    # Validation with an arbitrary test point.
     x_rand = [100, 200, 300, 400, 500]
     print(f"Test at random {x_rand}: f(x) = {griewank_function(x_rand)}")

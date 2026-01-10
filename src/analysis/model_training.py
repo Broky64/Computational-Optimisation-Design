@@ -20,22 +20,22 @@ def train_surrogate_model():
 
     df = pd.read_csv(csv_path)
     
-    # 1. Calcul de L/D
+    # Calculate Lift-to-Drag ratio
     df['LD'] = df['CL'] / df['CD']
     
-    # --- ETAPE CRUCIALE : NETTOYAGE DES DONNEES (OUTLIERS) ---
-    # On retire les résultats absurdes qui cassent le modèle.
-    # On garde seulement les L/D réalistes (entre 0 et 200).
+    # Data Cleaning: Outlier Removal
+    # Remove non-physical or extreme results to improve model accuracy.
+    # Retain Lift-to-Drag ratios within the realistic range of 0 to 200.
     original_len = len(df)
     df = df[ (df['LD'] > 0) & (df['LD'] < 200) ]
     cleaned_len = len(df)
     print(f"  Data Cleaning: Removed {original_len - cleaned_len} outliers.")
     
     if cleaned_len < 50:
-        print("[ERROR] Not enough valid data left after cleaning. Check your generation.")
+        print("[ERROR] Insufficient valid data remaining after cleaning.")
         return
 
-    # 2. Préparation
+    # Data preparation
     X = df[['w1', 'w2', 'w3', 'w4', 'w5', 'w6']]
     y = df['LD']
     
@@ -44,11 +44,11 @@ def train_surrogate_model():
     print(f"  Training Set:   {len(X_train)}")
     print(f"  Test Set:       {len(X_test)}")
     
-    # 3. Entraînement (200 arbres)
+    # Model training with 200 trees
     model = RandomForestRegressor(n_estimators=200, random_state=42)
     model.fit(X_train, y_train)
     
-    # 4. Evaluation
+    # Performance evaluation
     y_pred_test = model.predict(X_test)
     r2_train = r2_score(y_train, model.predict(X_train))
     r2_test = r2_score(y_test, y_pred_test)
@@ -58,7 +58,7 @@ def train_surrogate_model():
     
     joblib.dump(model, model_path)
     
-    # 5. Rapport
+    # Report generation
     report = f"""===========================================================
 TASK C.3 REPORT: Surrogate Model Training
 ===========================================================
@@ -78,11 +78,11 @@ CONCLUSION:
     with open(report_path, 'w') as f: f.write(report)
     print(f"[REPORT SAVED] -> {report_path}")
 
-    # 6. Graphique
+    # Result visualization
     plt.figure(figsize=(8, 8))
     plt.scatter(y_test, y_pred_test, color='blue', alpha=0.6, label='Test Data')
     
-    # Ligne diagonale parfaite
+    # Reference diagonal representing perfect prediction
     limit_min = min(y_test.min(), y_pred_test.min())
     limit_max = max(y_test.max(), y_pred_test.max())
     plt.plot([limit_min, limit_max], [limit_min, limit_max], 'r--', label='Perfect Prediction')

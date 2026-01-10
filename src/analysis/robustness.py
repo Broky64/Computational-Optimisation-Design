@@ -5,7 +5,7 @@ from src.aerodynamics.evaluator import evaluate_airfoil
 
 def run_robustness_analysis(best_weights, xfoil_path, n_samples=100):
     """
-    Exécute l'analyse de robustesse (Monte Carlo) pour la Tâche C.1.
+    Execute Monte Carlo robustness analysis for Task C.1.
     """
     print(f"\n[ANALYSIS] Starting Robustness Check on {n_samples} samples...")
     print(f"Base Weights: {best_weights}")
@@ -13,18 +13,18 @@ def run_robustness_analysis(best_weights, xfoil_path, n_samples=100):
     alpha_mean = 3.0
     alpha_std = 0.1
     
-    # 1. Génération des scénarios
+    # Scenario generation
     alphas = np.random.normal(alpha_mean, alpha_std, n_samples)
     
     cl_res = []
     cd_res = []
     valid_count = 0
     
-    # 2. Simulation
+    # Flight condition simulation
     for i, alpha_val in enumerate(alphas):
         res = evaluate_airfoil(best_weights, 500_000, alpha_val, xfoil_path)
         
-        # Filtre de validité (éviter les crashs ou CD=0)
+        # Filter invalid results (e.g., convergence failures or non-physical drag)
         if res['CL'] is not None and res['CD'] is not None and res['CD'] > 1e-6:
             cl_res.append(res['CL'])
             cd_res.append(res['CD'])
@@ -36,15 +36,15 @@ def run_robustness_analysis(best_weights, xfoil_path, n_samples=100):
     print(f"\n[DONE] Valid simulations: {valid_count}/{n_samples}")
     
     if valid_count == 0:
-        print("[ERROR] Aucune simulation valide.")
+        print("[ERROR] No valid simulations performed.")
         return
 
-    # 3. Calculs Statistiques
+    # Statistical analysis
     cl_arr = np.array(cl_res)
     cd_arr = np.array(cd_res)
     ld_vals = cl_arr / cd_arr
     
-    # Nettoyage des infinis éventuels
+    # Remove non-finite values from analysis
     mask = np.isfinite(ld_vals)
     ld_vals = ld_vals[mask]
     cl_arr = cl_arr[mask]
@@ -52,7 +52,7 @@ def run_robustness_analysis(best_weights, xfoil_path, n_samples=100):
     
     ld_mean, ld_std = np.mean(ld_vals), np.std(ld_vals)
     
-    # 4. Génération du Rapport
+    # Report generation
     report = f"""===========================================================
 TASK C.1 REPORT: Robustness Analysis (Monte Carlo)
 ===========================================================
@@ -70,14 +70,14 @@ ROBUSTNESS STATISTICS:
     Mean:    {np.mean(cd_arr):.6f} | Std: {np.std(cd_arr):.6f}
 ===========================================================
 """
-    # Sauvegarde Rapport Texte
+    # Save results to text file
     os.makedirs('results', exist_ok=True)
     with open("results/task_c1_results.txt", 'w') as f:
         f.write(report)
     print("\n" + report)
     print("[SAVED] Report -> results/task_c1_results.txt")
 
-    # 5. Génération du Graphique
+    # Result visualization
     plt.figure(figsize=(12, 4))
     plt.subplot(1, 3, 1); plt.hist(cl_arr, bins=15, color='skyblue', edgecolor='black'); plt.title('Lift (CL)')
     plt.subplot(1, 3, 2); plt.hist(cd_arr, bins=15, color='salmon', edgecolor='black'); plt.title('Drag (CD)')
