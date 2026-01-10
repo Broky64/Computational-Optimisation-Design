@@ -33,12 +33,12 @@ def griewank_function(x):
     
     return result
 
-# Petit test rapide si on exécute ce fichier directement
+# Just a quick test if I run this script directly
 if __name__ == "__main__":
-    # Test au point optimal (devrait donner 0.0)
+    # Testing the optimal point (it should return 0.0)
     x_opt = [0, 0, 0, 0, 0]
     print(f"Test at origin {x_opt}: f(x) = {griewank_function(x_opt)}")
     
-    # Test avec un point aléatoire
+    # Testing with a random point
     x_rand = [100, 200, 300, 400, 500]
     print(f"Test at random {x_rand}: f(x) = {griewank_function(x_rand)}")

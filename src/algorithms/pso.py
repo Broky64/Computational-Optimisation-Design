@@ -57,18 +57,18 @@ class PSO:
         self.particles = []
         self.global_best_position = None
         self.global_best_score = float('inf')
-        self.history = [] # To store convergence data
+        self.history = [] # I'll use this to store the convergence data
 
     def optimize(self):
-        # 1. Initialization
+        # 1. First, I'll initialize the swarm
         self._initialize_swarm()
         
-        # 2. Main Loop
+        # 2. This is the main optimization loop
         for i in range(self.max_iter):
             for particle in self.particles:
                 
                 # --- UPDATE VELOCITY ---
-                # r1, r2 are random vectors between 0 and 1
+                # I'm using r1 and r2 as random vectors between 0 and 1
                 r1 = np.random.rand(self.dim)
                 r2 = np.random.rand(self.dim)
                 
@@ -88,17 +88,17 @@ class PSO:
                 score = self.func(particle.position)
                 particle.current_score = score
                 
-                # Update Personal Best
+                # I'll update the personal best if the new score is lower
                 if score < particle.best_score:
                     particle.best_score = score
                     particle.best_position = copy.deepcopy(particle.position)
                     
-                # Update Global Best
+                # And here I update the global best
                 if score < self.global_best_score:
                     self.global_best_score = score
                     self.global_best_position = copy.deepcopy(particle.position)
             
-            # Log history
+            # Logging the history for each iteration
             self.history.append(self.global_best_score)
             print(f"Iter {i+1}/{self.max_iter} | Best Score: {self.global_best_score:.6f}")
 
