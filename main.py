@@ -252,7 +252,7 @@ def launch_c1():
     run_robustness_analysis(best_weights, XFOIL_PATH, n_samples=100)
 
 def launch_c3():
-    generate_training_data(XFOIL_PATH, n_samples=200)
+    generate_training_data(XFOIL_PATH, n_samples=1000)
 
 def launch_c3_train():
     train_surrogate_model()

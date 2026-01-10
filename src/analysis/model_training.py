@@ -2,98 +2,93 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import joblib # Pour sauvegarder le modèle
+import joblib 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import r2_score, mean_absolute_error
 
 def train_surrogate_model():
-    """
-    Tâche C.3 (Partie 2) : Entraînement du Modèle de Substitution (Surrogate Model).
-    Utilise Random Forest pour prédire L/D à partir des poids CST.
-    """
     csv_path = "results/surrogate_dataset.csv"
     model_path = "results/surrogate_model.pkl"
     report_path = "results/task_c3_model_report.txt"
     
     print(f"\n[ANALYSIS] Training Surrogate Model...")
     
-    # 1. Chargement des données
     if not os.path.exists(csv_path):
-        print(f"[ERROR] Dataset not found at {csv_path}. Run Option 6 first!")
+        print(f"[ERROR] Dataset not found. Run Option 6 first!")
         return
 
     df = pd.read_csv(csv_path)
     
-    # On calcule la cible (L/D)
-    # Attention aux divisions par zéro éventuelles (bien que déjà filtrées)
+    # 1. Calcul de L/D
     df['LD'] = df['CL'] / df['CD']
     
-    # Features (Entrées) : w1 à w6
+    # --- ETAPE CRUCIALE : NETTOYAGE DES DONNEES (OUTLIERS) ---
+    # On retire les résultats absurdes qui cassent le modèle.
+    # On garde seulement les L/D réalistes (entre 0 et 200).
+    original_len = len(df)
+    df = df[ (df['LD'] > 0) & (df['LD'] < 200) ]
+    cleaned_len = len(df)
+    print(f"  Data Cleaning: Removed {original_len - cleaned_len} outliers.")
+    
+    if cleaned_len < 50:
+        print("[ERROR] Not enough valid data left after cleaning. Check your generation.")
+        return
+
+    # 2. Préparation
     X = df[['w1', 'w2', 'w3', 'w4', 'w5', 'w6']]
-    # Target (Sortie) : LD
     y = df['LD']
     
-    # 2. Séparation Train / Test (80% pour apprendre, 20% pour tester)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    print(f"  Dataset Size:   {len(df)}")
     print(f"  Training Set:   {len(X_train)}")
     print(f"  Test Set:       {len(X_test)}")
     
-    # 3. Entraînement (Random Forest)
-    # n_estimators=100 : 100 arbres de décision
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    # 3. Entraînement (200 arbres)
+    model = RandomForestRegressor(n_estimators=200, random_state=42)
     model.fit(X_train, y_train)
     
-    # 4. Évaluation
-    y_pred_train = model.predict(X_train)
+    # 4. Evaluation
     y_pred_test = model.predict(X_test)
-    
-    r2_train = r2_score(y_train, y_pred_train)
-    r2_test = r2_score(y_test, y_pred_test) # Le score le plus important (sur des données inconnues)
+    r2_train = r2_score(y_train, model.predict(X_train))
+    r2_test = r2_score(y_test, y_pred_test)
     mae_test = mean_absolute_error(y_test, y_pred_test)
     
     print(f"  Model Trained. R2 Score (Test): {r2_test:.4f}")
     
-    # 5. Sauvegarde du modèle (pour utilisation future)
     joblib.dump(model, model_path)
     
-    # 6. Rapport Texte
+    # 5. Rapport
     report = f"""===========================================================
 TASK C.3 REPORT: Surrogate Model Training
 ===========================================================
-ALGORITHM: Random Forest Regressor
-DATASET:   {csv_path} ({len(df)} samples)
+ALGORITHM: Random Forest Regressor (200 trees)
+DATASET:   {csv_path}
+CLEANING:  Removed {original_len - cleaned_len} outliers (kept 0 < L/D < 200)
 
 PERFORMANCE METRICS:
-  R2 Score (Train):   {r2_train:.4f}  (Should be close to 1.0)
-  R2 Score (Test):    {r2_test:.4f}   (> 0.8 is good, > 0.9 is excellent)
-  Mean Abs Error:     {mae_test:.4f}  (Average prediction error on L/D)
+  R2 Score (Train):   {r2_train:.4f}
+  R2 Score (Test):    {r2_test:.4f}   (Target: > 0.85)
+  Mean Abs Error:     {mae_test:.4f}
 
 CONCLUSION:
-  The model is saved as '{model_path}'.
-  It can now predict L/D instantly without XFOIL.
+  Model saved to '{model_path}'.
 ===========================================================
 """
-    with open(report_path, 'w') as f:
-        f.write(report)
+    with open(report_path, 'w') as f: f.write(report)
     print(f"[REPORT SAVED] -> {report_path}")
 
-    # 7. Graphique de Validation (Predicted vs Actual)
+    # 6. Graphique
     plt.figure(figsize=(8, 8))
     plt.scatter(y_test, y_pred_test, color='blue', alpha=0.6, label='Test Data')
     
     # Ligne diagonale parfaite
-    min_val = min(y_test.min(), y_pred_test.min())
-    max_val = max(y_test.max(), y_pred_test.max())
-    plt.plot([min_val, max_val], [min_val, max_val], 'r--', label='Perfect Prediction')
+    limit_min = min(y_test.min(), y_pred_test.min())
+    limit_max = max(y_test.max(), y_pred_test.max())
+    plt.plot([limit_min, limit_max], [limit_min, limit_max], 'r--', label='Perfect Prediction')
     
     plt.title(f'Surrogate Model Accuracy (R2 = {r2_test:.3f})')
-    plt.xlabel('Actual L/D (XFOIL)')
-    plt.ylabel('Predicted L/D (AI Model)')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig('results/surrogate_validation.png')
-    plt.close()
+    plt.xlabel('Actual L/D'); plt.ylabel('Predicted L/D')
+    plt.legend(); plt.grid(True)
+    plt.savefig('results/surrogate_validation.png'); plt.close()
     print(f"[PLOT SAVED]   -> results/surrogate_validation.png")
