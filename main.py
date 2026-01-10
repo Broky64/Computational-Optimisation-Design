@@ -29,7 +29,7 @@ def airfoil_objective_function(weights):
     # 1. Appel XFOIL
     results = evaluate_airfoil(weights, REYNOLDS, ALPHA, XFOIL_PATH)
     
-    # 2. Gestion échecs
+    # 2. Gestion échecs XFOIL
     if results['CL'] is None:
         return 1000.0 
     
@@ -37,11 +37,20 @@ def airfoil_objective_function(weights):
     cd = results['CD']
     cm = results['CM']
     
-    if cd <= 1e-7:
+    # --- GARDE-FOU PHYSIQUE (Correction du bug L/D infini) ---
+    # Une traînée inférieure à 0.001 est impossible à ce Reynolds.
+    # Si XFOIL renvoie ça, c'est un artefact numérique -> On rejette.
+    if cd < 0.001:
         return 1000.0
         
     # 3. Fitness (Maximiser L/D => Minimiser -L/D)
-    fitness = -(cl / cd)
+    ld_ratio = cl / cd
+    
+    # Second garde-fou : Si L/D > 200, c'est "trop beau pour être vrai"
+    if ld_ratio > 200:
+        return 1000.0
+
+    fitness = -ld_ratio
     
     # 4. Contrainte de Moment (CM >= -0.1)
     if cm < -0.1:
@@ -65,8 +74,8 @@ def run_task_a():
     
     # Paramètres (rapides pour Griewank)
     pso_params = {
-        'num_particles': 150, 
-        'max_iter': 500, 
+        'num_particles': 50, 
+        'max_iter': 300, 
         'w': 0.9, 
         'c1': 1.4, 
         'c2': 1.4, 
@@ -132,15 +141,15 @@ def run_task_b3():
     ]
     
     runs = 5  # Nombre de répétitions pour les stats
-    
-    # Configuration PSO
+
+    # Configuration PSO pour la Tâche B.3
     pso_params = {
         'num_particles': 20, 
-        'max_iter': 30,  # 30 itérations suffisent souvent pour une bonne forme
+        'max_iter': 30,
         'w': 0.9,
         'c1': 1.4,
         'c2': 1.4,
-        'n_jobs': -1 # Utilise tous les cœurs
+        'n_jobs': -1  # <--- C'EST CETTE LIGNE QUI ACTIVE LE PARALLÉLISME
     }
     
     print(f"Config: {runs} Runs | {pso_params['num_particles']} Particles | {pso_params['max_iter']} Iterations")
