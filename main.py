@@ -18,6 +18,7 @@ from src.aerodynamics.cst import CSTShapeGenerator
 from src.analysis.robustness import run_robustness_analysis
 from src.analysis.surrogate import generate_training_data
 from src.analysis.model_training import train_surrogate_model
+from src.analysis.surrogate_optimization import run_surrogate_optimization
 
 # --- CONFIGURATION ---
 XFOIL_PATH = "/Users/paulbrocvielle/Downloads/Xfoil-for-Mac-main/bin/xfoil"
@@ -257,6 +258,9 @@ def launch_c3():
 def launch_c3_train():
     train_surrogate_model()
 
+def launch_c4():
+    run_surrogate_optimization(XFOIL_PATH)
+
 def main():
     while True:
         print("\n--- OPTIMIZATION SUITE ---")
@@ -267,6 +271,7 @@ def main():
         print("5. Task C.1 (Robustness) [Via Module]")
         print("6. Task C.3 (Data Gen)   [Via Module]")
         print("7. Task C.3 (Train Model)[Via Module]")
+        print("8. Task C.4 (Surrogate Opt)")
         print("0. Exit")
         
         c = input("Choice: ")
@@ -277,6 +282,7 @@ def main():
         elif c == '5': launch_c1()
         elif c == '6': launch_c3()
         elif c == '7': launch_c3_train()
+        elif c == '8': launch_c4()
         elif c == '0': break
 
 if __name__ == "__main__":
