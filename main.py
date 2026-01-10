@@ -20,6 +20,9 @@ from src.analysis.surrogate import generate_training_data
 from src.analysis.model_training import train_surrogate_model
 from src.analysis.surrogate_optimization import run_surrogate_optimization
 
+# Import modularisé (Visualisation) <--- NOUVEAU
+from src.visualization.plotter import plot_airfoil_from_dat
+
 # Configuration
 XFOIL_PATH = "/Users/paulbrocvielle/Downloads/Xfoil-for-Mac-main/bin/xfoil"
 
@@ -261,6 +264,12 @@ def launch_c3_train():
 def launch_c4():
     run_surrogate_optimization(XFOIL_PATH)
 
+def launch_visualization():
+    # Appelle la fonction importée du fichier src/visualization/plotter.py
+    dat_path = "results/optimized_airfoil_B3.dat"
+    img_path = "results/optimized_airfoil_view.png"
+    plot_airfoil_from_dat(dat_path, img_path)
+
 def main():
     while True:
         print("\n--- OPTIMIZATION SUITE ---")
@@ -272,6 +281,7 @@ def main():
         print("6. Task C.3 (Data Gen)   [Via Module]")
         print("7. Task C.3 (Train Model)[Via Module]")
         print("8. Task C.4 (Surrogate Opt)")
+        print("9. Task C.5 (Visualization)")
         print("0. Exit")
         
         c = input("Choice: ")
@@ -283,6 +293,7 @@ def main():
         elif c == '6': launch_c3()
         elif c == '7': launch_c3_train()
         elif c == '8': launch_c4()
+        elif c == '9': launch_visualization()
         elif c == '0': break
 
 if __name__ == "__main__":
