@@ -10,7 +10,7 @@ class Particle:
         self.current_score = float('inf')
 
 class PSO:
-    def __init__(self, objective_func, bounds, num_particles=30, max_iter=100, w=0.7, c1=1.4, c2=1.4, dim=5):
+    def __init__(self, objective_func, bounds, num_particles=100, max_iter=500, w=0.7, c1=1.4, c2=1.4, dim=5):
         """
         Particle Swarm Optimization Solver.
         
