@@ -229,18 +229,77 @@ def run_task_b3():
     else:
         print("Error: Could not validate the best solution.")
 
+def run_task_b4():
+    """
+    Tâche B.4 : Analyse de Sensibilité (Taille de l'essaim)
+    On compare la convergence pour 10, 20 et 40 particules.
+    """
+    print("\n===========================================================")
+    print("   TASK B.4: Sensitivity Analysis (Swarm Size)           ")
+    print("===========================================================")
+    
+    # On teste 3 tailles de population différentes
+    swarm_sizes = [10, 20, 40]
+    colors = ['blue', 'green', 'red']
+    
+    # Paramètres fixes
+    bounds = [
+        (-0.6, 0.0), (-0.6, 0.0), (-0.6, 0.0), 
+        (0.0, 0.6),  (0.0, 0.6),  (0.0, 0.6)
+    ]
+    max_iter = 20  # On réduit un peu les itérations pour que le test ne dure pas 1h
+    
+    plt.figure(figsize=(10, 6))
+    
+    for i, n_particles in enumerate(swarm_sizes):
+        print(f"\nTesting Swarm Size: {n_particles}...")
+        
+        # Configuration spécifique
+        pso_params = {
+            'num_particles': n_particles, 
+            'max_iter': max_iter,
+            'w': 0.9, 'c1': 1.4, 'c2': 1.4,
+            'n_jobs': -1
+        }
+        
+        # Lancement (1 seul run par taille pour l'exemple)
+        solver = PSO(airfoil_objective_function, bounds, **pso_params)
+        _, best_score = solver.optimize()
+        
+        print(f"-> Result: {best_score:.4f}")
+        
+        # Ajout au graphique
+        # On trace 'Best Run' pour chaque taille
+        plt.plot(solver.history, label=f'Population = {n_particles}', 
+                 color=colors[i], marker='o', markersize=3, linewidth=2)
+
+    # Finalisation du Plot
+    plt.xlabel('Iteration')
+    plt.ylabel('Best Fitness Score (Minimize -L/D)')
+    plt.title('PSO Sensitivity Analysis: Population Size vs Convergence')
+    plt.grid(True, which='both', linestyle='--')
+    plt.legend()
+    
+    os.makedirs('results', exist_ok=True)
+    output_path = 'results/sensitivity_analysis_B4.png'
+    plt.savefig(output_path)
+    plt.close()
+    print(f"\nSensitivity plot saved to: {output_path}")
+
 def main():
     while True:
         print("\n--- MAIN MENU ---")
         print("1. Run Task A (Griewank)")
         print("2. Run Task B.1 (Test Pipeline)")
-        print("3. Run Task B.3 (Full Optimization - 5 Runs)")
+        print("3. Run Task B.3 (Full Optimization)")
+        print("4. Run Task B.4 (Sensitivity Analysis)")  # <--- Nouveau
         print("0. Exit")
         
         c = input("Choice: ")
         if c == '1': run_task_a()
         elif c == '2': run_task_b1()
         elif c == '3': run_task_b3()
+        elif c == '4': run_task_b4()  # <--- Nouveau
         elif c == '0': break
 
 if __name__ == "__main__":
