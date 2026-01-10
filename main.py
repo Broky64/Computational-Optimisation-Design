@@ -1,5 +1,7 @@
-import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Empêche l'affichage de fenêtres bloquantes (Mode fichier uniquement)
 import matplotlib.pyplot as plt
+import numpy as np
 import os
 import sys
 
@@ -13,25 +15,21 @@ from src.aerodynamics.evaluator import evaluate_airfoil
 from src.aerodynamics.cst import CSTShapeGenerator
 
 # --- CONFIGURATION ---
-# Mettez votre chemin XFOIL exact ici
+# Chemin XFOIL (Vérifiez qu'il est correct pour votre machine)
 XFOIL_PATH = "/Users/paulbrocvielle/Downloads/Xfoil-for-Mac-main/bin/xfoil"
 
-# --- TACHE B.2 : Formulation du problème ---
+# --- TACHE B.2 : Fonction Objectif Aile ---
 def airfoil_objective_function(weights):
     """
-    Fonction objectif pour l'optimisation du profil.
-    Objectif : Maximiser L/D (donc Minimiser -L/D)
-    Contrainte : CM >= -0.1
+    Minimiser (-L/D) sous contrainte CM >= -0.1
     """
-    # Paramètres imposés
     REYNOLDS = 500_000
     ALPHA = 3.0
     
-    # 1. Évaluation XFOIL
-    # On passe XFOIL_PATH via la variable globale pour simplifier l'appel PSO
+    # 1. Appel XFOIL
     results = evaluate_airfoil(weights, REYNOLDS, ALPHA, XFOIL_PATH)
     
-    # 2. Gestion des échecs (Pénalité très forte)
+    # 2. Gestion échecs
     if results['CL'] is None:
         return 1000.0 
     
@@ -39,19 +37,14 @@ def airfoil_objective_function(weights):
     cd = results['CD']
     cm = results['CM']
     
-    # Sécurité anti-division par zéro
     if cd <= 1e-7:
         return 1000.0
         
-    # 3. Calcul du score (Fitness)
-    # On veut maximiser L/D, donc on minimise l'opposé.
-    # L/D varie souvent entre 20 et 100. Donc fitness entre -20 et -100.
+    # 3. Fitness (Maximiser L/D => Minimiser -L/D)
     fitness = -(cl / cd)
     
-    # 4. Application des contraintes (Penalty Method)
-    # Contrainte : Le moment ne doit pas être trop piqueur (CM >= -0.1)
+    # 4. Contrainte de Moment (CM >= -0.1)
     if cm < -0.1:
-        # Pénalité = Valeur fixe + proportionnelle à la violation
         violation = abs(cm - (-0.1))
         penalty = 500.0 + (violation * 1000.0)
         fitness += penalty
@@ -61,30 +54,62 @@ def airfoil_objective_function(weights):
 # --- TACHES ---
 
 def run_task_a():
-    """Tâche A.3 : Optimisation Griewank"""
-    print("\n=== TASK A: PSO on Griewank Function ===")
+    """Tâche A.3 : Optimisation Griewank (10 runs)"""
+    print("\n===========================================================")
+    print("   TASK A: PSO on Griewank Function (Robustness Test)    ")
+    print("===========================================================")
     
     dim = 5
     bounds = (-600, 600)
-    pso_params = {'num_particles': 50, 'max_iter': 300, 'w': 0.9, 'c1': 1.4, 'c2': 1.4, 'dim': dim}
+    runs = 10
+    
+    # Paramètres (rapides pour Griewank)
+    pso_params = {
+        'num_particles': 150, 
+        'max_iter': 500, 
+        'w': 0.9, 
+        'c1': 1.4, 
+        'c2': 1.4, 
+        'dim': dim,
+        'n_jobs': -1 # Parallélisme activé
+    }
 
-    solver = PSO(griewank_function, bounds, **pso_params)
-    best_pos, best_score = solver.optimize()
+    best_scores = []
+    histories = []
+
+    for r in range(runs):
+        print(f"Run {r+1}/{runs}...")
+        solver = PSO(griewank_function, bounds, **pso_params)
+        _, best_score = solver.optimize()
+        best_scores.append(best_score)
+        histories.append(solver.history)
     
-    print(f"\n[RESULT] Best Score: {best_score:.6f}")
+    # Stats
+    mean_score = np.mean(best_scores)
+    std_score = np.std(best_scores)
+    best_idx = np.argmin(best_scores)
     
-    # Plot rapide
+    print(f"\n[RESULTS A] Mean: {mean_score:.6f} | Std Dev: {std_score:.6f}")
+    print(f"Best Run: {best_scores[best_idx]:.6f}")
+    
+    # Plot
     plt.figure()
-    plt.plot(solver.history)
+    plt.plot(histories[best_idx])
     plt.yscale('log')
-    plt.title('Griewank Convergence')
-    plt.savefig('results/task_a_plot.png')
-    print("Graph saved to results/task_a_plot.png")
+    plt.title('Task A: Griewank Convergence')
+    plt.xlabel('Iteration')
+    plt.ylabel('Objective')
+    plt.grid(True)
+    os.makedirs('results', exist_ok=True)
+    plt.savefig('results/task_a_convergence.png')
+    plt.close() # Ferme la figure pour libérer la mémoire
+    print("Graph saved to results/task_a_convergence.png")
 
 def run_task_b1():
     """Tâche B.1 : Test Unitaire Pipeline"""
     print("\n=== TASK B.1: Pipeline Test ===")
     test_weights = [-0.15, -0.2, -0.1, 0.2, 0.25, 0.2]
+    print("Running single evaluation...")
     res = evaluate_airfoil(test_weights, 500000, 3.0, XFOIL_PATH)
     
     if res['CL'] is not None:
@@ -94,76 +119,103 @@ def run_task_b1():
 
 def run_task_b3():
     """
-    Tâche B.3 : Exécution de l'optimisation aérodynamique.
+    Tâche B.3 : Optimisation Complète Aile (Multi-runs)
     """
     print("\n===========================================================")
     print("   TASK B.3: Airfoil Shape Optimization (PSO)            ")
     print("===========================================================")
     
-    # 1. Définition des bornes (6 variables)
-    # Poids Intrados (Lower) : négatifs [-0.6, 0.0]
-    # Poids Extrados (Upper) : positifs [0.0, 0.6]
+    # 1. Paramètres
     bounds = [
         (-0.6, 0.0), (-0.6, 0.0), (-0.6, 0.0), # Lower
         (0.0, 0.6),  (0.0, 0.6),  (0.0, 0.6)   # Upper
     ]
     
-    # 2. Configuration PSO
-    # NOTE : XFOIL est lent. On réduit la population et les itérations par rapport à Griewank.
-    # 20 particules * 30 itérations = 600 appels XFOIL (environ 10-15 minutes selon PC)
+    runs = 5  # Nombre de répétitions pour les stats
+    
+    # Configuration PSO
     pso_params = {
         'num_particles': 20, 
-        'max_iter': 3,
-        'w': 0.9,    # Inertie adaptative gérée dans pso.py
+        'max_iter': 30,  # 30 itérations suffisent souvent pour une bonne forme
+        'w': 0.9,
         'c1': 1.4,
-        'c2': 1.4
+        'c2': 1.4,
+        'n_jobs': -1 # Utilise tous les cœurs
     }
     
-    print(f"Configuration: {pso_params['num_particles']} particles, {pso_params['max_iter']} iterations.")
-    print("Starting optimization (this may take time)...")
+    print(f"Config: {runs} Runs | {pso_params['num_particles']} Particles | {pso_params['max_iter']} Iterations")
+    print("Starting optimization loop...")
     
-    # 3. Lancement
-    solver = PSO(
-        objective_func=airfoil_objective_function,
-        bounds=bounds,
-        **pso_params
-    )
+    all_scores = []
+    all_weights = []
+    all_histories = []
     
-    best_weights, best_score = solver.optimize()
+    # 2. Boucle de runs
+    for r in range(runs):
+        print(f"\n--- Run {r+1}/{runs} ---")
+        solver = PSO(
+            objective_func=airfoil_objective_function,
+            bounds=bounds,
+            **pso_params
+        )
+        
+        w_opt, s_opt = solver.optimize()
+        
+        all_scores.append(s_opt)
+        all_weights.append(w_opt)
+        all_histories.append(solver.history)
+        print(f"-> Run {r+1} Finished. Score: {s_opt:.4f}")
+
+    # 3. Statistiques & Meilleur Résultat
+    all_scores_np = np.array(all_scores)
+    best_idx = np.argmin(all_scores_np)
+    best_weights = all_weights[best_idx]
+    best_score = all_scores_np[best_idx]
     
-    # 4. Résultats
-    print("\n=== OPTIMIZATION FINISHED ===")
-    print(f"Best Objective Score: {best_score:.4f}")
-    print(f"Best Weights: {np.round(best_weights, 4)}")
+    print("\n===========================================================")
+    print("   TASK B.3 STATISTICAL RESULTS")
+    print("===========================================================")
+    print(f"Mean Best Score:       {np.mean(all_scores_np):.4f}")
+    print(f"Std Dev of Score:      {np.std(all_scores_np):.4f}")
+    print(f"Best Overall Score:    {best_score:.4f} (Run {best_idx+1})")
     
-    # Ré-évaluation finale pour affichage propre
+    # 4. Sauvegarde du Meilleur Profil
     final_res = evaluate_airfoil(best_weights, 500000, 3.0, XFOIL_PATH)
+    
     if final_res['CL']:
         ld = final_res['CL'] / final_res['CD']
-        print(f"Final L/D Ratio: {ld:.2f}")
-        print(f"Moment Coeff:    {final_res['CM']:.4f}")
+        print(f"\n[BEST GEOMETRY ANALYSIS]")
+        print(f"  Final L/D Ratio: {ld:.2f}")
+        print(f"  Moment Coeff:    {final_res['CM']:.4f}")
         
-        # Sauvegarde du profil
+        # Fichier DAT
         cst = CSTShapeGenerator()
         coords = cst.generate_airfoil(best_weights[:3], best_weights[3:], n_points=150)
         
-        fname = "results/optimized_airfoil.dat"
         os.makedirs('results', exist_ok=True)
+        fname = "results/optimized_airfoil_B3.dat"
         with open(fname, 'w') as f:
-            f.write(f"Optimized Airfoil L/D={ld:.2f}\n")
+            f.write(f"Optimized Airfoil (Run {best_idx+1}) L/D={ld:.2f}\n")
             for x, y in coords:
                 f.write(f" {x:.6f}  {y:.6f}\n")
-        print(f"Geometry saved to {fname}")
+        print(f"  Geometry saved to: {fname}")
         
-        # Plot Convergence
-        plt.figure()
-        plt.plot(solver.history)
+        # Plot de convergence (Meilleur Run)
+        plt.figure(figsize=(10, 6))
+        plt.plot(all_histories[best_idx], label=f'Best Run ({best_idx+1})', linewidth=2)
+        # On peut aussi afficher les autres en transparence légère
+        for i, h in enumerate(all_histories):
+            if i != best_idx:
+                plt.plot(h, color='gray', alpha=0.3)
+                
         plt.xlabel('Iteration')
         plt.ylabel('Negative L/D')
-        plt.title('Airfoil Optimization Convergence')
+        plt.title(f'Airfoil Optimization Convergence ({runs} runs)')
+        plt.legend()
         plt.grid(True)
         plt.savefig('results/task_b3_convergence.png')
-        print("Convergence plot saved.")
+        plt.close()
+        print("  Convergence plot saved to: results/task_b3_convergence.png")
         
     else:
         print("Error: Could not validate the best solution.")
@@ -173,7 +225,7 @@ def main():
         print("\n--- MAIN MENU ---")
         print("1. Run Task A (Griewank)")
         print("2. Run Task B.1 (Test Pipeline)")
-        print("3. Run Task B.3 (Full Optimization)")
+        print("3. Run Task B.3 (Full Optimization - 5 Runs)")
         print("0. Exit")
         
         c = input("Choice: ")
