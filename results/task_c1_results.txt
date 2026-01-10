@@ -1,0 +1,16 @@
+===========================================================
+TASK C.1 REPORT: Robustness Analysis (Monte Carlo)
+===========================================================
+Input Weights: [0.0, 0.0, 0.0, 0.145422, 0.150759, 0.293384]
+Parameters: Alpha ~ N(3.0, 0.1) | Samples: 100
+Valid Samples: 92/100
+
+ROBUSTNESS STATISTICS:
+  L/D RATIO:
+    Mean:    131.7729
+    Std Dev: 0.5224  <-- Key Metric
+  LIFT (CL):
+    Mean:    0.7847 | Std: 0.0095
+  DRAG (CD):
+    Mean:    0.005955 | Std: 0.000072
+===========================================================

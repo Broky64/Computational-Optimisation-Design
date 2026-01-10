@@ -156,5 +156,4 @@ cython_debug/
 # Data and Results (optional: ignore large files)
 data/*
 !data/.gitkeep
-results/*
 !results/.gitkeep

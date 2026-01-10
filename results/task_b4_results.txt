@@ -1,0 +1,12 @@
+===========================================================
+TASK B.4 REPORT: Sensitivity Analysis
+===========================================================
+OBJECTIVE:
+  Compare convergence for different swarm sizes.
+
+RESULTS:
+  Swarm Size 10:      Best Score = -117.5843
+  Swarm Size 20:      Best Score = -131.9730
+  Swarm Size 40:      Best Score = -131.7766
+
+===========================================================

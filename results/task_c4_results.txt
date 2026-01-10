@@ -1,0 +1,18 @@
+===========================================================
+TASK C.4 REPORT: Surrogate-Based Optimization
+===========================================================
+PERFORMANCE:
+  Optimization Time:   30.4983 seconds
+  Iterations:          100
+  Particles:           50
+
+RESULTS COMPARISON:
+  AI Predicted L/D:    86.94
+  Real XFOIL L/D:      100.87
+  
+  Prediction Error:    13.93
+  Accuracy:            86.2% (approx)
+
+CONCLUSION:
+  The surrogate model allows optimization in real-time.
+===========================================================

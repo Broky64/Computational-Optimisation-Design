@@ -1,0 +1,21 @@
+===========================================================
+TASK B.3 REPORT: Airfoil Shape Optimization
+===========================================================
+CONFIGURATION:
+  Runs:           5
+  Particles:      20
+  Iterations:     30
+  Constraint:     CM >= -0.1
+
+STATISTICAL RESULTS (on 5 runs):
+  Mean Best Score:       -131.0065
+  Std Dev Score:         2.0675
+  Best Overall Score:    -132.2428 (Run 5)
+
+BEST GEOMETRY ANALYSIS:
+  Final L/D Ratio:       132.24
+  Moment Coeff (CM):     -0.0999
+  
+  Best Weights (Copy for C.1):
+  [0.000000, 0.000000, 0.000000, 0.145422, 0.150759, 0.293384]
+===========================================================

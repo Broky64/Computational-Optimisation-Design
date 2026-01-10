@@ -1,0 +1,15 @@
+===========================================================
+TASK C.3 REPORT: Surrogate Model Training
+===========================================================
+ALGORITHM: Random Forest Regressor (200 trees)
+DATASET:   results/surrogate_dataset.csv
+CLEANING:  Removed 177 outliers (kept 0 < L/D < 200)
+
+PERFORMANCE METRICS:
+  R2 Score (Train):   0.9738
+  R2 Score (Test):    0.8050   (Target: > 0.85)
+  Mean Abs Error:     6.2045
+
+CONCLUSION:
+  Model saved to 'results/surrogate_model.pkl'.
+===========================================================
