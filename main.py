@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import sys
+from functools import partial
 
 # Path configuration
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -24,7 +25,7 @@ from src.analysis.surrogate_optimization import run_surrogate_optimization
 from src.visualization.plotter import plot_airfoil_from_dat
 
 # Configuration
-XFOIL_PATH = "/Users/paulbrocvielle/Downloads/Xfoil-for-Mac-main/bin/xfoil"
+XFOIL_PATH = None
 
 # Helper functions
 def save_report(filename, content):
@@ -32,9 +33,9 @@ def save_report(filename, content):
     with open(filename, 'w') as f: f.write(content)
     print(f"\n[REPORT SAVED] -> {filename}")
 
-def airfoil_objective_function(weights):
+def airfoil_objective_function(weights, xfoil_path):
     """Objective function for airfoil optimization (Task B.3)"""
-    res = evaluate_airfoil(weights, 500_000, 3.0, XFOIL_PATH)
+    res = evaluate_airfoil(weights, 500_000, 3.0, xfoil_path)
     
     if res['CL'] is None or res['CD'] is None or res['CD'] < 0.001: return 1000.0
     
@@ -143,7 +144,7 @@ def run_task_b3():
     
     for r in range(runs):
         print(f"Run {r+1}/{runs}...")
-        solver = PSO(airfoil_objective_function, bounds, **params)
+        solver = PSO(partial(airfoil_objective_function, xfoil_path=XFOIL_PATH), bounds, **params)
         w, s = solver.optimize()
         all_scores.append(s); all_weights.append(w); all_histories.append(solver.history)
         print(f"  -> Score: {s:.4f}")
@@ -228,7 +229,7 @@ def run_task_b4():
     for n in sizes:
         print(f"Testing Pop={n}...")
         params = {'num_particles': n, 'max_iter': 20, 'w': 0.9, 'c1': 1.4, 'c2': 1.4, 'n_jobs': -1}
-        solver = PSO(airfoil_objective_function, bounds, **params)
+        solver = PSO(partial(airfoil_objective_function, xfoil_path=XFOIL_PATH), bounds, **params)
         _, s = solver.optimize()
         
         results_str += f"  Swarm Size {n:<2}:      Best Score = {s:.4f}\n"
@@ -271,6 +272,15 @@ def launch_visualization():
     plot_airfoil_from_dat(dat_path, img_path)
 
 def main():
+    global XFOIL_PATH
+    default_path = "C://"
+    print(f"\n--- XFOIL CONFIGURATION ---")
+    user_input = input(f"Enter path to XFOIL executable [Default: {default_path}]: ").strip()
+    XFOIL_PATH = user_input if user_input else default_path
+    
+    if not os.path.exists(XFOIL_PATH):
+        print(f"WARNING: Executable not found at '{XFOIL_PATH}'. Please check the path.")
+
     while True:
         print("\n--- OPTIMIZATION SUITE ---")
         print("1. Task A (Griewank)")
